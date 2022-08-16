@@ -5,10 +5,17 @@ const settings = {
   animate: true,
 };
 
-const particles =[]
+const particles =[];
+const cursor = {x : 9999, y : 9999};
 
-const sketch = ({width, height}) => {
+ let elCanvas;
+
+const sketch = ({width, height, canvas}) => {
   let x, y, particle;
+
+   elCanvas = canvas;
+
+  canvas.addEventListener('mousedown', onMouseDown )
 
   for (let i = 0; i < 1; i++) {
    x = width * 0.5;
@@ -29,6 +36,28 @@ const sketch = ({width, height}) => {
       particle.draw(context);
     })
   };
+};
+
+const onMouseDown = (e) => {
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp)
+
+  onMouseUp(e);
+};
+const onMouseMove = (e) => {
+const x = (e.ofsetX / elCanvas.offsetWidth) * elCanvas.width
+const y = (e.ofsety / elCanvas.offsetHeight) * elCanvas.height
+
+cursor.x = x 
+cursor.y = y 
+
+};
+const onMouseUp = (e) => {
+  window.removeEventListener('mousemove', onMouseMove);
+  window.removeEventListener('mouseup', onMouseUp)
+
+  cursor.x = 9999
+  cursor.y = 9999
 };
 
 canvasSketch(sketch, settings);
@@ -56,17 +85,43 @@ this.ix = x;
 this.iy = y;
 
 this.radius = radius;
+this.minDist = 100;
+this.pushFactor = 0.02;
+this.pullFactor = 0.004
+this.drampFactor = 0.95
+
   }
 
 update(){
-  this.ax += 0.001;
+let dx, dy, dd, distDelta;
 
-  this.vx += this.ax;
-  this.vy += this.ay;
+//pull force
+dx =this.ix - cursor.x;
+dy =this.iy - cursor.y;
 
-  this.x += this.vx;
-  this.y += this.vy;
+this.ax = dx * this.pullFactor;
+this.ay = dy * this.pullFactor;
 
+// push force
+dx = this.x - cursor.x;
+dy = this.y - cursor.y;
+dd = Math.sqrt(dx * dx + dy * dy);
+
+distDelta = this.minDist - dd;
+
+if (dd < this.minDist) {
+  this.ax += (dx / dd) * distDelta * this.pushFactor;
+  this.ay += (dy / dd) * distDelta * this.pushFactor;
+}
+
+this.vx += this.ax;
+this.vy += this.ay;
+
+this.vx *= this.dampFactor;
+this.vy *= this.dampFactor;
+
+this.x += this.vx;
+this.y += this.vy;
   
 }
 
