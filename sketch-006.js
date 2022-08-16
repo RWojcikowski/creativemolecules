@@ -1,4 +1,7 @@
 const canvasSketch = require('canvas-sketch');
+const random = require('canvas-sketch-util/random');
+const { quadOut } = require('eases');
+const eases = require('eases')
 
 const settings = {
   dimensions: [ 1080, 1080 ],
@@ -11,20 +14,44 @@ const cursor = {x : 9999, y : 9999};
  let elCanvas;
 
 const sketch = ({width, height, canvas}) => {
-  let x, y, particle;
+  let x, y, particle, radius;
+
+  let pos = []; 
+
+  const numCircles = 15;
+  const gapCicles = 8 ;
+  const gapDot = 4;
+  let dotRadius = 12;
+  let cirRadius = 0;
+  const fitRadius = dotRadius;
 
    elCanvas = canvas;
-
   canvas.addEventListener('mousedown', onMouseDown )
 
-  for (let i = 0; i < 1; i++) {
-   x = width * 0.5;
-   y = height * 0.5;
+for (let i = 0; i < numCircles; i++) {
+  const circumference = Math.PI * 2 * cirRadius
+  const numFit = i ? Math.floor(circumference / (fitRadius * 2 + gapDot)): 1;
+  const fitSlice = Math.PI  * 2 / numFit ;
 
-   particle = new Particle({x, y });
+  for (let j = 0; j < numFit; j++) {
+    const theta = fitSlice * j;
 
-   particles.push(particle)
-  }
+    x = Math.cos(theta) * cirRadius;
+    y = Math.sin(theta) * cirRadius;
+
+    x += width * 0.5;
+    y += height * 0.5;
+
+    radius = dotRadius;
+
+    particle = new Particle({x, y});
+    particles.push(particle);
+}
+  
+  cirRadius += fitRadius * 2 + gapCicles;
+  dotRadius =( 1 - eases/quadOut(i / numCircles)) + fitRadius;
+}
+
 
 
   return ({ context, width, height }) => {
@@ -45,14 +72,14 @@ const onMouseDown = (e) => {
   onMouseUp(e);
 };
 const onMouseMove = (e) => {
-const x = (e.ofsetX / elCanvas.offsetWidth) * elCanvas.width
-const y = (e.ofsety / elCanvas.offsetHeight) * elCanvas.height
+const x = (e.offsetX / elCanvas.offsetWidth) * elCanvas.width
+const y = (e.offsety / elCanvas.offsetHeight) * elCanvas.height
 
 cursor.x = x 
 cursor.y = y 
 
 };
-const onMouseUp = (e) => {
+const onMouseUp = () => {
   window.removeEventListener('mousemove', onMouseMove);
   window.removeEventListener('mouseup', onMouseUp)
 
@@ -62,35 +89,32 @@ const onMouseUp = (e) => {
 
 canvasSketch(sketch, settings);
 
-class Particle{
-  constructor({x, y, radius = 10 }){
-    //position
-this.x = x;
-this.y = y;
+class Particle {
+	constructor({ x, y, radius = 10, colMap }) {
+		// position
+		this.x = x;
+		this.y = y;
 
-//acceleracion
-this.ax = 0;
-this.ay = 0;
+		// acceleration
+		this.ax = 0;
+		this.ay = 0;
+
+		// velocity
+		this.vx = 0;
+		this.vy = 0;
+
+		// initial position
+		this.ix = x;
+		this.iy = y;
+
+		this.radius = radius;
 
 
-
-//velocity
-this.vx = 0;
-this.vy = 0;
-
-
-// initial position 
-
-this.ix = x;
-this.iy = y;
-
-this.radius = radius;
-this.minDist = 100;
-this.pushFactor = 0.02;
-this.pullFactor = 0.004
-this.drampFactor = 0.95
-
-  }
+		this.minDist = random.range(100, 200);
+		this.pushFactor = random.range(0.01, 0.02);
+		this.pullFactor = random.range(0.002, 0.006);
+		this.dampFactor = random.range(0.90, 0.95);
+	}
 
 update(){
 let dx, dy, dd, distDelta;
@@ -104,37 +128,36 @@ this.ay = dy * this.pullFactor;
 
 // push force
 dx = this.x - cursor.x;
-dy = this.y - cursor.y;
-dd = Math.sqrt(dx * dx + dy * dy);
+		dy = this.y - cursor.y;
+		dd = Math.sqrt(dx * dx + dy * dy);
 
-distDelta = this.minDist - dd;
+		distDelta = this.minDist - dd;
 
-if (dd < this.minDist) {
-  this.ax += (dx / dd) * distDelta * this.pushFactor;
-  this.ay += (dy / dd) * distDelta * this.pushFactor;
-}
+		if (dd < this.minDist) {
+			this.ax += (dx / dd) * distDelta * this.pushFactor;
+			this.ay += (dy / dd) * distDelta * this.pushFactor;
+		}
 
-this.vx += this.ax;
-this.vy += this.ay;
+		this.vx += this.ax;
+		this.vy += this.ay;
 
-this.vx *= this.dampFactor;
-this.vy *= this.dampFactor;
+		this.vx *= this.dampFactor;
+		this.vy *= this.dampFactor;
 
-this.x += this.vx;
-this.y += this.vy;
-  
-}
-
-  draw(context){
-    context.save();
-context.translate(this.x, this.x)
-context. fillStyle = 'white';
-
-context.beginPath();
-context.arc(0, 0, this.radius, 0, Math.PI * 2);
-context.fill();
+		this.x += this.vx;
+		this.y += this.vy;
+	}
 
 
-    context.restore();
-  }
+  draw(context) {
+		context.save();
+		context.translate(this.x, this.y);
+		context.fillStyle = 'white';
+
+		context.beginPath();
+		context.arc(0, 0, this.radius * this.scale, 0, Math.PI * 2);
+		context.fill();
+
+		context.restore();
+	}
 }
